@@ -1,3 +1,8 @@
 tmp*
 \#*\#
 *.class
+target
+pwdDB.dat
+frontend
+
+desktop.ini

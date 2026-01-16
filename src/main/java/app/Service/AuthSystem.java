@@ -3,17 +3,16 @@ package app.Service;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import com.sun.net.httpserver.HttpExchange;
-import com.google.gson.Gson;
 
+import jakarta.annotation.PostConstruct;
+import org.springframework.stereotype.Service;
+
+@Service
 public class AuthSystem {
     Map<String, String> pwdDB;
     Map<String, String> session2userDB = new ConcurrentHashMap<>();
@@ -40,7 +39,10 @@ public class AuthSystem {
         }
     }
 
-    public AuthSystem() {
+    public AuthSystem() {}
+
+    @PostConstruct
+    public void init() {
         this.pwdDB = loadPwdDB();
     }
 
@@ -126,55 +128,5 @@ public class AuthSystem {
         pwdDB.put(u, p);
         savePwdDB();
         return null;
-    }
-
-    public static void sendJson(HttpExchange exchange, int statusCode, Object data)
-            throws IOException {
-        // Default: business code = 0 (success) or statusCode (if error)
-        int businessCode = (statusCode == 200) ? 0 : statusCode;
-        sendJson(exchange, statusCode, businessCode, null, data);
-    }
-
-    public static void sendJson(HttpExchange exchange, int statusCode, int businessCode,
-            String message, Object data) throws IOException {
-        ApiResponse response = new ApiResponse(businessCode, message, data);
-        Gson gson = new Gson();
-        String jsonResponse = gson.toJson(response);
-        byte[] responseBytes = jsonResponse.getBytes("UTF-8");
-
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-        exchange.sendResponseHeaders(statusCode, responseBytes.length);
-
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(responseBytes);
-        }
-    }
-
-    public static Map<String, String> parseCookie(String cookieHeader) {
-        Map<String, String> map = new HashMap<>();
-        if (cookieHeader == null) {
-            return map;
-        }
-        String[] pairs = cookieHeader.split(";");
-        for (String pair : pairs) {
-            String[] keyval = pair.trim().split("=");
-            if (keyval.length == 2) {
-                map.put(keyval[0], keyval[1]);
-            }
-        }
-        return map;
-    }
-}
-
-
-class ApiResponse {
-    int code;
-    String message;
-    Object data;
-
-    ApiResponse(int code, String message, Object data) {
-        this.code = code;
-        this.message = message;
-        this.data = data;
     }
 }

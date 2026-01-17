@@ -1,71 +1,47 @@
 package app.Controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import app.DTO.ApiResponse;
 import app.Service.AuthSystem;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "用户认证", description = "用户注册、登录相关接口")
 public class LoginController {
-
+    private ApiResponse<Void> apiresponse;
     @Autowired
-    AuthSystem authsystem;
+    private AuthSystem authSystem;
 
-    // DTO for Login Request
-    public static class LoginRequest {
+    private static class LoginRequest {
         public String username;
         public String password;
     }
 
-    // DTO for Login Response Data
-    public static class LoginData {
-        public String token;
-
-        public LoginData(String token) {
-            this.token = token;
-        }
-    }
-
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginData>> login(
-            @RequestBody LoginRequest loginRequest) {
-        String username = loginRequest.username;
-        String password = loginRequest.password;
-
-        if (username == null || password == null) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(400, "缺少用户名或密码"));
-        }
-
+    @Operation(summary = "用户登录", description = "使用用户名和密码登录，返回 session")
+    public ResponseEntity<ApiResponse<Void>> login(
+            @RequestBody LoginRequest request) {
         AuthSystem.SessionResult sessionresult =
-                authsystem.getSession(username, password);
-
-        if (sessionresult.err == null && sessionresult.session != null) {
-            LoginData data = new LoginData(sessionresult.session);
-
-            ResponseCookie springCookie =
-                    ResponseCookie.from("session_token", sessionresult.session)
-                            .httpOnly(true).sameSite("Lax").path("/").build();
-
-            System.out.printf("[Login] Successfully login, session: %s\n",
-                    sessionresult.session);
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, springCookie.toString())
-                    .body(ApiResponse.success("登录成功", data));
+                authSystem.getSession(request.username, request.password);
+        String session = sessionresult.session;
+        String err = sessionresult.err;
+        if (err == null) {
+            apiresponse = ApiResponse.success("登入成功.");
+            ResponseCookie cookie = ResponseCookie.from("session", session)
+                    .httpOnly(true).sameSite("Lax").path("/").build();
+            return ResponseEntity.ok().header("Set-Cookie", cookie.toString())
+                    .body(apiresponse);
         } else {
-            // Business Logic Error: 200 OK, Code 1002
-            System.out.printf("[Login] Error: %s\n", sessionresult.err);
-            return ResponseEntity
-                    .ok(ApiResponse.error(1002, sessionresult.err));
+            apiresponse = ApiResponse.error(1003, err);
+            return ResponseEntity.ok().body(apiresponse);
         }
     }
 }

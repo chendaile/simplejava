@@ -47,13 +47,14 @@ public class AuthSystem {
     }
 
     @SuppressWarnings("unchecked")
-    Map<String, String> loadPwdDB() {
+    private Map<String, String> loadPwdDB() {
         File dbfile = new File(DBPATH);
         if (!dbfile.exists()) {
             System.out.printf("未找到磁盘数据库%s,新建数据库.\n", DBPATH);
             return new ConcurrentHashMap<>();
         }
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(DBPATH))) {
+        try (ObjectInputStream ois =
+                new ObjectInputStream(new FileInputStream(DBPATH))) {
             System.out.printf("读取到磁盘数据库%s.\n", DBPATH);
             return (Map<String, String>) ois.readObject();
         } catch (Exception e) {
@@ -62,8 +63,9 @@ public class AuthSystem {
         }
     }
 
-    void savePwdDB() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(DBPATH))) {
+    private void savePwdDB() {
+        try (ObjectOutputStream oos =
+                new ObjectOutputStream(new FileOutputStream(DBPATH))) {
             oos.writeObject(pwdDB);
         } catch (Exception e) {
             e.printStackTrace();
@@ -114,16 +116,17 @@ public class AuthSystem {
     }
 
     public String Register(String u, String p) {
-        if (pwdDB.containsKey(u)) {
-            return "用户已存在.";
+        // 先检查 null，避免 NullPointerException
+        if (u == null) {
+            return "未传入用户名";
         } else if ("".equals(u)) {
             return "用户名应不为空";
-        } else if (u == null) {
-            return "未传入用户名";
-        } else if ("".equals(p)) {
-            return "密码应不为空";
         } else if (p == null) {
             return "未传入密码";
+        } else if ("".equals(p)) {
+            return "密码应不为空";
+        } else if (pwdDB.containsKey(u)) {
+            return "用户已存在.";
         }
         pwdDB.put(u, p);
         savePwdDB();

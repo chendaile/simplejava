@@ -6,50 +6,42 @@ import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import app.DTO.ApiResponse;
 import app.Service.AuthSystem;
+import app.Service.AuthSystem.LoginResult;
+import app.DTO.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "用户认证", description = "用户注册、登录相关接口")
 public class MeController {
-
+    private ApiResponse<LoginResponseData> apiresponse;
     @Autowired
-    AuthSystem authsystem;
+    private AuthSystem authSystem;
 
-    // DTO for User Info
-    public static class UserInfo {
+    private static class LoginResponseData {
         public String username;
 
-        public UserInfo(String username) {
+        private LoginResponseData(String username) {
             this.username = username;
         }
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserInfo>> getMe(@CookieValue(
-            name = "session_token", required = false) String tokenFromCookie) {
-        System.out.printf("[Me] Received Cookie Token: %s\n", tokenFromCookie);
-
-        if (tokenFromCookie == null) {
-            // Original code sent 401 with code 1003.
-            return ResponseEntity.status(401)
-                    .body(ApiResponse.error(1003, "未登录"));
-        }
-
-        AuthSystem.LoginResult result = authsystem.Login(tokenFromCookie);
-
-        if (result.username != null) {
-            UserInfo data = new UserInfo(result.username);
-
-            System.out.printf("[Me] Session verified for user: %s\n",
-                    result.username);
-            return ResponseEntity.ok(ApiResponse.success("Session有效", data));
+    @Operation(summary = "获取当前用户信息",
+            description = "通过 session cookie 获取当前登录用户的信息")
+    public ResponseEntity<ApiResponse<LoginResponseData>> me(
+            @CookieValue(name = "session", required = false) String session) {
+        LoginResult loginresult = authSystem.Login(session);
+        String username = loginresult.username;
+        String err = loginresult.err;
+        if (err == null) {
+            LoginResponseData data = new LoginResponseData(username);
+            apiresponse = ApiResponse.success("登入成功.", data);
         } else {
-            // Original code sent 401 with code 1003 for error too.
-            System.out.printf("[Me] Session invalid: %s\n", result.err);
-            return ResponseEntity.status(401)
-                    .body(ApiResponse.error(1003, result.err));
+            apiresponse = ApiResponse.error(1001, err);
         }
+        return ResponseEntity.ok().body(apiresponse);
     }
 }
